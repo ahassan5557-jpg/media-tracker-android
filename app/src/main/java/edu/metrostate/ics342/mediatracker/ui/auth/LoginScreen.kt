@@ -16,8 +16,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import edu.metrostate.ics342.mediatracker.theme.MediaTrackerTheme
+import androidx.compose.ui.tooling.preview.Preview
 
 @Composable
+
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
