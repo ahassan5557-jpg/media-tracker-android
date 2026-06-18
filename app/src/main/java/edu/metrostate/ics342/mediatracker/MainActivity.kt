@@ -10,6 +10,7 @@ import androidx.navigation.compose.rememberNavController
 import edu.metrostate.ics342.mediatracker.navigation.MediaTrackerNavGraph
 import edu.metrostate.ics342.mediatracker.theme.MediaTrackerTheme
 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
