@@ -14,9 +14,9 @@ class AuthViewModel : ViewModel() {
     private val repository = UserRepository()
 
     sealed class AuthUiState {
-        object Idle    : AuthUiState()
-        object Loading : AuthUiState()
-        object Success : AuthUiState()
+        data object Idle    : AuthUiState()
+        data object Loading : AuthUiState()
+        data object Success : AuthUiState()
         data class Error(val msgResId: Int) : AuthUiState()
     }
 
