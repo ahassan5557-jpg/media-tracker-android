@@ -126,10 +126,10 @@ fun RegisterScreen(
         Spacer(Modifier.height(40.dp))
 
         OutlinedTextField(
-            value = displayName,
-            onValueChange = { displayName = it },
-            label = { Text("Display Name") },
-            singleLine = true,
+            value           = displayName,
+            onValueChange   = viewModel::onDisplayNameChange,
+            label           = { Text(stringResource(R.string.display_name_label)) },
+            singleLine      = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
             modifier = Modifier.fillMaxWidth()
@@ -137,10 +137,10 @@ fun RegisterScreen(
         Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text("Username") },
-            singleLine = true,
+            value           = username,
+            onValueChange   = viewModel::onUsernameChange,
+            label           = { Text(stringResource(R.string.username_label)) },
+            singleLine      = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
             modifier = Modifier.fillMaxWidth()
@@ -148,10 +148,10 @@ fun RegisterScreen(
         Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            singleLine = true,
+            value           = email,
+            onValueChange   = viewModel::onEmailChange,
+            label           = { Text(stringResource(R.string.email_label)) },
+            singleLine      = true,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email,
                 imeAction = ImeAction.Next

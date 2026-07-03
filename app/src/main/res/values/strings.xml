@@ -70,6 +70,10 @@
     <string name="settings_change_password">Change password</string>
     <string name="settings_dark_mode">Dark mode</string>
 
+    <string name="search_hint">Search books, movies, shows…</string>
+    <string name="search_popular_this_week">Popular This Week</string>
+    <string name="search_results_count">%1$d results</string>
+
     <!-- Stubs -->
     <string name="search_not_implemented">Search is not implemented yet.</string>
     <string name="detail_not_implemented">Media Detail is not implemented yet.\n(mediaId = %1$d)</string>
@@ -93,8 +97,10 @@
     <string name="error_empty_fields">Please fill in all fields.</string>
     <string name="error_passwords_mismatch">Passwords do not match.</string>
     <string name="error_email_or_username_taken">That email or username is already taken.</string>
+    <string name="error_invalid_credentials">Invalid email or password.</string>
     <string name="error_network">Network error. Check your connection and try again.</string>
     <string name="error_generic">Something went wrong. Please try again.</string>
+    <string name="register_success">Account created! Please sign in.</string>
 
     <!-- Media -->
     <string name="media_unknown_author">Unknown Author</string>
