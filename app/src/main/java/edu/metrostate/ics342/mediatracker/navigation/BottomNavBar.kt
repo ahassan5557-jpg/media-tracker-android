@@ -58,7 +58,8 @@ fun BottomNavBar(navController: NavController) {
 
     NavigationBar {
         bottomNavItems.forEach { item ->
-            val isSelected = currentDestination?.hierarchy?.any { it.route == item.route} == true
+            val isSelected = currentDestination?.route == item.route ||
+                    (item.route == Routes.SEARCH && currentDestination?.route == Routes.SEARCH_RESULTS)
 
             NavigationBarItem(
                 selected = isSelected,
