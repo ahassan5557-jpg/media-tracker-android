@@ -1,9 +1,7 @@
 package edu.metrostate.ics342.mediatracker.data.network
 
-
-import edu.metrostate.ics342.mediatracker.data.RegisterResult
-import edu.metrostate.ics342.mediatracker.data.UserRepository
-import edu.metrostate.ics342.mediatracker.data.LoginResult
+import edu.metrostate.ics342.mediatracker.data.network.RegisterResult
+import edu.metrostate.ics342.mediatracker.data.network.LoginResult
 import java.io.IOException
 
 class DefaultUserRepository(

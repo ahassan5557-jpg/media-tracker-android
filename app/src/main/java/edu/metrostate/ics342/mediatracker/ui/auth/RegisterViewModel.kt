@@ -3,9 +3,9 @@ package edu.metrostate.ics342.mediatracker.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import edu.metrostate.ics342.mediatracker.data.UserRepository
-import edu.metrostate.ics342.mediatracker.data.RegisterResult
-
+import edu.metrostate.ics342.mediatracker.data.network.UserRepository
+import edu.metrostate.ics342.mediatracker.data.network.RegisterResult
+import edu.metrostate.ics342.mediatracker.R
 import edu.metrostate.ics342.mediatracker.data.network.DefaultUserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +23,21 @@ class RegisterViewModel(
     }
 
     private val _displayName = MutableStateFlow("")
-    val displayName = _displayName.asStateFlow()x
+    val displayName = _displayName.asStateFlow()
+    private val _email = MutableStateFlow("")
+    val email = _email.asStateFlow()
+
+    private val _username = MutableStateFlow("")
+    val username = _username.asStateFlow()
+
+    private val _password = MutableStateFlow("")
+    val password = _password.asStateFlow()
+
+    private val _confirmPassword = MutableStateFlow("")
+    val confirmPassword = _confirmPassword.asStateFlow()
+
+    private val _registerState = MutableStateFlow<RegisterUiState>(RegisterUiState.Idle)
+    val registerState: StateFlow<RegisterUiState> = _registerState.asStateFlow()
 
     fun setDisplayName(newValue: String) {
         _displayName.value = newValue
@@ -60,9 +74,5 @@ class RegisterViewModel(
         }
     }
 
-    fun onSignUpClicked() {
-        viewModelScope.launch {
-            userRepository.createAccount("", "","","")
-        }
-    }
+
 }

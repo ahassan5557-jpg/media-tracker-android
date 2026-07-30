@@ -5,7 +5,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import edu.metrostate.ics342.mediatracker.data.SessionRepository
+import edu.metrostate.ics342.mediatracker.data.network.SessionRepository
 import edu.metrostate.ics342.mediatracker.data.model.UserProfile
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.encodeToString

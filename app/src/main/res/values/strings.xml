@@ -101,10 +101,25 @@
     <string name="error_network">Network error. Check your connection and try again.</string>
     <string name="error_generic">Something went wrong. Please try again.</string>
     <string name="register_success">Account created! Please sign in.</string>
+    <!-- Media Detail -->
+    <string name="detail_add_want_to">+ Want to</string>
+    <string name="detail_save">Save</string>
+    <string name="detail_about">About</string>
+    <string name="detail_not_yet_rated">Not yet rated</string>
+    <string name="detail_reviews_count">Reviews (%1$d)</string>
+    <string name="detail_write_review">+ Write Review</string>
+    <string name="detail_no_reviews">No reviews yet. Be the first to review.</string>
+    <string name="detail_stat_year">Year</string>
+    <string name="detail_stat_pages">Pages</string>
+    <string name="detail_stat_runtime">Runtime</string>
+    <string name="detail_stat_seasons">Seasons</string>
+    <string name="detail_stat_genre">Genre</string>
+    <string name="detail_runtime_minutes">%1$d min</string>
 
     <!-- Media -->
     <string name="media_unknown_author">Unknown Author</string>
     <string name="media_unknown_director">Unknown Director</string>
     <string name="media_unknown_creator">Unknown Creator</string>
+    <string name="error_conflict">An account with that email or username already exists.</string>
 
 </resources>
