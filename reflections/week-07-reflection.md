@@ -7,52 +7,46 @@
 
 ## Commits This Week
 
-<!-- Paste a link to your commits for this week. The easiest way: go to your repo on GitHub,
-     click "commits", and copy the URL after filtering by your name or branch. -->
-
-**Link:**
+**Link:**https://github.com/ahassan5557-jpg/media-tracker-android/commit/b5b944651457f4eca25c9263d15736ac8e7e3e3a
 
 ---
 
 ## Code Review
 
-<!-- Every week you leave a review on a pod mate's pull request. Fill in both parts below.
-     Part 1 is the link — I will verify the review exists on GitHub.
-     Part 2 is your written assessment — what you actually looked at and what you found. -->
 
-**Reviewed:** *(pod mate's name)*
-**Link to my review:**
+**Reviewed:** *(pod mate's name)* Fasika
+**Link to my review:** https://github.com/FasikaYifru/fy-media-tracker-android/pull/8/changes/13af3e00fce0c4ec9dbaec1f5ffc6c2b730a5711#r3686949995
 
-### What I Looked At
+### What I Looked At     click "commits", and copy the URL after filtering by your name or branch. -->
+
 
 <!-- Walk through the code you reviewed. What was the PR trying to do? Which files or
      functions did you focus on? -->
-
+PR is working on implementing a media detail screen, showing a header with cover image, title, and credi.
+I focused on the Column composable in MediaDetailScreen. specifically the stat grid Row and the reviews forEach
+loop.
 ### What I Noticed
 
-<!-- Be specific. Did you spot a potential bug? A pattern that could cause problems? Something
-     done well that you want to call out? "I looked at the ViewModel and everything seemed fine"
-     is not specific enough. Name the thing you noticed and explain why it matters. -->
+I noticed that the stat grid rown and reviws had the most repeated logic and hardcoded data. My review looked into the composable is doing the work of
+header, actions, about, stats, reviews and would benefit from being split into smaller named composables for readability.
 
 ### Comments I Left
 
-<!-- Briefly summarize the comments you left on the PR. If you left a positive comment,
-     say what it was. If you left a suggestion, say what you suggested and why. -->
+i suggested that it should be split into smaller named composables to help with readability I say this so that the next person or the pr when they return to this work 
+can have an easier time understanding and reading the code 
 
 ---
 
 ## One Thing I Understood More Deeply
 
-<!-- Be specific. Don't write "I learned about ViewModels." Write what specifically clicked —
-     what was confusing before, what made it make sense, and how you'd explain it to someone else.
-     There are no wrong answers here. -->
+today while working it clicked why ?.let {} matters in Compose specifically it's not just null-safety, it controls whether a whole piece of UI even gets built. 
+Seeing m.runtimeMinutes?.let { ... } made it click that if the value is null, that stat card just never renders, instead of showing empty or crashing.
 
 ---
 
 ## One Thing I'm Still Confused About
-
-<!-- Be honest. This is the most useful part of the reflection for me — it tells me where to
-     spend more time in class. You will not lose points for being confused. -->
+I'm still not totally clear on where viewModel.mockReviews is supposed to come from in a real app versus this version like, at what point does mock data get swapped
+for a real repository call, and how does the ViewModel know to refresh the list after onWriteReview is triggered? I get the concept of a ViewModel holding state, but the lifecycle still feels fuzzy to me
 
 ---
 
