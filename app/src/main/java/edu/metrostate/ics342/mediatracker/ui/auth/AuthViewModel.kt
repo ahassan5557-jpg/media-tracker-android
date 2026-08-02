@@ -5,19 +5,16 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 
 import edu.metrostate.ics342.mediatracker.R
-import edu.metrostate.ics342.mediatracker.data.LoginResult
-import edu.metrostate.ics342.mediatracker.data.SessionRepository
-import edu.metrostate.ics342.mediatracker.data.UserRepository
+import edu.metrostate.ics342.mediatracker.data.network.LoginResult
+import edu.metrostate.ics342.mediatracker.data.network.SessionRepository
+import edu.metrostate.ics342.mediatracker.data.network.UserRepository
 import edu.metrostate.ics342.mediatracker.data.datastore.DefaultSessionRepository
 import edu.metrostate.ics342.mediatracker.data.network.DefaultUserRepository
+import edu.metrostate.ics342.mediatracker.data.network.RegisterResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import edu.metrostate.ics342.mediatracker.data.UserRepository
-import edu.metrostate.ics342.mediatracker.R
-import edu.metrostate.ics342.mediatracker.data.network.SessionRepository
-
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val userRepository: UserRepository = DefaultUserRepository()
     private val sessionRepository: SessionRepository = DefaultSessionRepository(application)
@@ -39,6 +36,14 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _loginState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val loginState: StateFlow<AuthUiState> = _loginState.asStateFlow()
+    private val _displayName = MutableStateFlow("")
+    val displayName: StateFlow<String> = _displayName.asStateFlow()
+
+    private val _username = MutableStateFlow("")
+    val username: StateFlow<String> = _username.asStateFlow()
+
+    fun onDisplayNameChange(value: String) { _displayName.value = value }
+    fun onUsernameChange(value: String)    { _username.value    = value }
 
     fun onEmailChange(value: String)    { _email.value    = value }
     fun onPasswordChange(value: String) { _password.value = value }
@@ -85,16 +90,19 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         viewModelScope.launch {
             _registerState.value = AuthUiState.Loading
-            try {
-                repository.createAccount(
-                    displayName = displayName,
-                    username = username,
-                    email = email,
-                    password = password
-                )
-                _registerState.value = AuthUiState.Success
-            } catch (e: Exception) {
-                _registerState.value = AuthUiState.Error(R.string.error_empty_credentials)
+
+            val result = userRepository.register(
+                email = email,
+                password = password,
+                username = username,
+                displayName = displayName
+            )
+
+            when (result) {
+                RegisterResult.Success      -> _registerState.value = AuthUiState.Success
+                RegisterResult.Conflict     -> _registerState.value = AuthUiState.Error(R.string.error_conflict) // add this string resource if it doesn't exist
+                RegisterResult.NetworkError -> _registerState.value = AuthUiState.Error(R.string.error_network)
+                RegisterResult.UnknownError -> _registerState.value = AuthUiState.Error(R.string.error_generic)
             }
         }
     }

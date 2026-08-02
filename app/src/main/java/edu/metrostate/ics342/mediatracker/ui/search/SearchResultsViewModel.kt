@@ -3,7 +3,6 @@ package edu.metrostate.ics342.mediatracker.ui.search
 
 import androidx.lifecycle.ViewModel
 import edu.metrostate.ics342.mediatracker.data.datastore.fakeSearchResults
-import edu.metrostate.ics342.mediatracker.data.fakeSearchResults
 import edu.metrostate.ics342.mediatracker.data.model.Media
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

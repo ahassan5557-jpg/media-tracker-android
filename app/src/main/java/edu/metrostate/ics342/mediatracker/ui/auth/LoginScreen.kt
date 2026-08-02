@@ -153,5 +153,5 @@ fun LoginScreenPreview() {
             onLoginSuccess       = {},
             onNavigateToRegister = {}
         )
-    }}
+    }
 }

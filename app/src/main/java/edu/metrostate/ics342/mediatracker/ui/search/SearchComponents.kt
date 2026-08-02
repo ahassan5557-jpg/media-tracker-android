@@ -1,6 +1,5 @@
 package edu.metrostate.ics342.mediatracker.ui.search
 
-package edu.metrostate.ics342.mediatracker.ui.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
