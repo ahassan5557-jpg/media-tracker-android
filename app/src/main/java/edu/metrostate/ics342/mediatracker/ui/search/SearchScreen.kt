@@ -19,14 +19,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import edu.metrostate.ics342.mediatracker.R
 import edu.metrostate.ics342.mediatracker.data.FakeMediaRepository
 
-// ── STUB — Students build this in Week 5 ─────────────────────────────────────
-//
-// Week 5 task: Build the Search screen.
-//   1. Add a search bar (SearchBar or OutlinedTextField) at the top.
-//   2. Add FilterChips for All / Books / Movies / Shows in a horizontally scrollable Row.
-//   3. Display results in a LazyColumn (you'll learn why Column won't work here).
-//   4. Wire to GET /media?query=...&type=...
-//   5. Handle loading, empty, and error states.
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
@@ -38,7 +31,7 @@ fun SearchScreen(
     val selectedType by viewModel.selectedType.collectAsState()
 
     val popularItems = FakeMediaRepository.mediaList.filter { media ->
-        selectedType.isEmpty() || media.mediaType == selectedType
+        selectedType.isEmpty() || media.mediaType.apiString == selectedType
     }
 
     Column(modifier = Modifier.fillMaxSize()) {

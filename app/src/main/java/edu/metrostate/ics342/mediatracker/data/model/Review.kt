@@ -1,7 +1,11 @@
 package edu.metrostate.ics342.mediatracker.data.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Review(
     val userId: String,
+    val id: Int = 0,
     val mediaId: Int,
     val rating: Int,
     val reviewText: String? = null,

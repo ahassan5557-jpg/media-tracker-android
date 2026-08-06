@@ -2,14 +2,21 @@ package edu.metrostate.ics342.mediatracker.data.model
 
 import androidx.annotation.StringRes
 import edu.metrostate.ics342.mediatracker.R
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
 data class LibraryItem(
     val userId: String,
     val mediaId: Int,
+    @Serializable(with = LibraryStatusSerializer::class)
     val status: LibraryStatus,
     val addedAt: String,
     val updatedAt: String,
-    val media: Media
+    val media: Media? = null
 )
 
 enum class LibraryStatus(@param:StringRes val labelRes: Int) {
@@ -31,4 +38,11 @@ enum class LibraryStatus(@param:StringRes val labelRes: Int) {
             else          -> WANT_TO
         }
     }
+}
+object LibraryStatusSerializer : KSerializer<LibraryStatus> {
+    override val descriptor = PrimitiveSerialDescriptor("LibraryStatus", PrimitiveKind.STRING)
+    override fun serialize(encoder: Encoder, value: LibraryStatus) =
+        encoder.encodeString(value.toApiString())
+    override fun deserialize(decoder: Decoder) =
+        LibraryStatus.fromString(decoder.decodeString())
 }

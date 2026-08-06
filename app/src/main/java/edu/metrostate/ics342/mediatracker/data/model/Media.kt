@@ -1,11 +1,12 @@
 package edu.metrostate.ics342.mediatracker.data.model
 
 import android.content.Context
+import kotlinx.serialization.Serializable
 import edu.metrostate.ics342.mediatracker.R
-
+@Serializable
 data class Media(
     val id: Int,
-    val mediaType: String, // "book", "movie", or "show"
+    val mediaType: MediaType,
     val title: String,
     val author: String? = null,       // books
     val director: String? = null,     // movies
@@ -20,8 +21,8 @@ data class Media(
 
 /** Returns a human-readable credit line appropriate for the media type. */
 fun Media.creatorCredit(context: Context): String = when (mediaType) {
-    "book"  -> author   ?: context.getString(R.string.media_unknown_author)
-    "movie" -> director ?: context.getString(R.string.media_unknown_director)
-    "show"  -> creator  ?: context.getString(R.string.media_unknown_creator)
-    else    -> ""
+    MediaType.BOOK    -> author   ?: context.getString(R.string.media_unknown_author)
+    MediaType.MOVIE   -> director ?: context.getString(R.string.media_unknown_director)
+    MediaType.SHOW    -> creator  ?: context.getString(R.string.media_unknown_creator)
+    MediaType.UNKNOWN -> ""
 }

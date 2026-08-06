@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class MediaDetail(
     val id: Int,
-    val mediaType: String,             // "book", "movie", or "show"
+    val mediaType: MediaType,
     val title: String,
     val author: String? = null,        // books
     val director: String? = null,      // movies
@@ -31,8 +31,8 @@ data class MediaDetail(
 )
 
 fun MediaDetail.creatorCredit(context: Context): String = when (mediaType) {
-    "book"  -> author   ?: context.getString(R.string.media_unknown_author)
-    "movie" -> director ?: context.getString(R.string.media_unknown_director)
-    "show"  -> creator  ?: context.getString(R.string.media_unknown_creator)
-    else    -> ""
+    MediaType.BOOK    -> author   ?: context.getString(R.string.media_unknown_author)
+    MediaType.MOVIE   -> director ?: context.getString(R.string.media_unknown_director)
+    MediaType.SHOW    -> creator  ?: context.getString(R.string.media_unknown_creator)
+    MediaType.UNKNOWN -> ""
 }

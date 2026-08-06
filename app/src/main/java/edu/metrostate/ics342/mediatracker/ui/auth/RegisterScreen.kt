@@ -127,7 +127,7 @@ fun RegisterScreen(
 
         OutlinedTextField(
             value           = displayName,
-            onValueChange   = viewModel::onDisplayNameChange,
+            onValueChange   =  { displayName = it },
             label           = { Text(stringResource(R.string.display_name_label)) },
             singleLine      = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -138,7 +138,7 @@ fun RegisterScreen(
 
         OutlinedTextField(
             value           = username,
-            onValueChange   = viewModel::onUsernameChange,
+            onValueChange   =   { username = it },
             label           = { Text(stringResource(R.string.username_label)) },
             singleLine      = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -149,7 +149,7 @@ fun RegisterScreen(
 
         OutlinedTextField(
             value           = email,
-            onValueChange   = viewModel::onEmailChange,
+            onValueChange   = { email = it },
             label           = { Text(stringResource(R.string.email_label)) },
             singleLine      = true,
             keyboardOptions = KeyboardOptions(

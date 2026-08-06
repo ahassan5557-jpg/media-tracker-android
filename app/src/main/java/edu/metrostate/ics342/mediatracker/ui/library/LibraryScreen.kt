@@ -1,6 +1,9 @@
 package edu.metrostate.ics342.mediatracker.ui.library
 
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.res.painterResource
+import edu.metrostate.ics342.mediatracker.R
+import edu.metrostate.ics342.mediatracker.data.model.toIconRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -90,7 +93,7 @@ fun LibraryScreen(
 
         val filteredItems = items
             .filter { it.status == selectedStatus }
-            .filter { selectedType == "all" || it.media.mediaType == selectedType }
+            .filter { selectedType == "all" || it.media?.mediaType?.apiString == selectedType }
 
         if (filteredItems.isEmpty()) {
             Box(
@@ -174,7 +177,7 @@ private fun LibraryItemCard(
                     .clip(RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                if (item.media.coverUrl != null) {
+                if (item.media?.coverUrl != null) {
                     AsyncImage(
                         model             = item.media.coverUrl,
                         contentDescription = item.media.title,
@@ -185,10 +188,13 @@ private fun LibraryItemCard(
                     Surface(color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.fillMaxSize()) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text(when (item.media.mediaType) {
-                                "book" -> "📖"; "movie" -> "🎬"; "show" -> "📺"
-                                else -> "?"
-                            }, style = MaterialTheme.typography.titleLarge)
+
+                            Icon(
+                                painter = painterResource(item.media?.mediaType.toIconRes()),
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -197,10 +203,10 @@ private fun LibraryItemCard(
             Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(item.media.title, style = MaterialTheme.typography.titleSmall,
+                Text(item.media?.title ?: "", style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold, maxLines = 2)
                 Spacer(Modifier.height(2.dp))
-                Text(item.media.creatorCredit(LocalContext.current),
+                Text(item.media?.creatorCredit(LocalContext.current) ?: "",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(6.dp))
