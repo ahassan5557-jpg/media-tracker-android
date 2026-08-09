@@ -15,7 +15,6 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.StarBorder
-import androidx.compose.material.Icons.AutoMirrored.Outlined.StarHalf
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
