@@ -1,6 +1,9 @@
 package edu.metrostate.ics342.mediatracker.ui.profile
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.res.painterResource
+import edu.metrostate.ics342.mediatracker.R
+import edu.metrostate.ics342.mediatracker.data.model.toIconRes
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -154,15 +157,17 @@ fun UserProfileScreen(
                         Surface(color = MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier.fillMaxSize()) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text(when (item.media.mediaType) {
-                                    "book" -> "📖"; "movie" -> "🎬"; "show" -> "📺"
-                                    else -> "?"
-                                })
+                                Icon(
+                                    painter = painterResource(item.media?.mediaType.toIconRes()),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
                     Spacer(Modifier.width(12.dp))
-                    Text(item.media.title, style = MaterialTheme.typography.bodyMedium,
+                    Text(item.media?.title ?: "", style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium)
                 }
             }

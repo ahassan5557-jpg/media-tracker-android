@@ -116,6 +116,9 @@
     <string name="detail_stat_genre">Genre</string>
     <string name="detail_runtime_minutes">%1$d min</string>
 
+    <string name="detail_retry">Try Again</string>
+    <string name="detail_not_found">This media item could not be found.</string>
+
     <!-- Media -->
     <string name="media_unknown_author">Unknown Author</string>
     <string name="media_unknown_director">Unknown Director</string>

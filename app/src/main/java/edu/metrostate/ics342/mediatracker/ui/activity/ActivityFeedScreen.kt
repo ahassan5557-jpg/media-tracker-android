@@ -4,6 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.res.painterResource
+import edu.metrostate.ics342.mediatracker.R
+import edu.metrostate.ics342.mediatracker.data.model.toIconRes
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -150,12 +153,12 @@ private fun ActivityCard(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text(when (event.media?.mediaType) {
-                                "book"  -> "📖"
-                                "movie" -> "🎬"
-                                "show"  -> "📺"
-                                else    -> "?"
-                            }, style = MaterialTheme.typography.titleMedium)
+                            Icon(
+                                painter = painterResource(event.media?.mediaType.toIconRes()),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
