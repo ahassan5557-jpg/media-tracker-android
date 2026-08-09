@@ -1,11 +1,11 @@
 package edu.metrostate.ics342.mediatracker.data
 
 
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import edu.metrostate.ics342.mediatracker.data.model.CreateUserRequest
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
-import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 const val baseURL = "https://wjtzkgpxmxtzcczzbvrz.supabase.co/functions/v1/"
 

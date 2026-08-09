@@ -9,3 +9,7 @@ data class ErrorResponse(
 )
 
 class MediaNotFoundException(message: String) : Exception(message)
+
+class DuplicateFavoriteException : Exception("Already favorited")
+
+class DuplicateLibraryException : Exception("Already in library")
