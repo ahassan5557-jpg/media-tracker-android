@@ -25,6 +25,7 @@ extensions.configure<ApplicationExtension> {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
         buildConfigField("String", "API_CLIENT_ID", "\"${localProperties["apiClientId"]}\"")
         buildConfigField("String", "API_CLIENT_SECRET", "\"${localProperties["apiClientSecret"]}\"")
     }
@@ -77,10 +78,9 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.retrofit.converters.kotlinx.serializtion)
-    implementation(libs.kotlinx.serialization)
-
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
