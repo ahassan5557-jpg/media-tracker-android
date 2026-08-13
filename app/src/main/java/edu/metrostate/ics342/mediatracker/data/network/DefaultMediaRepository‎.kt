@@ -10,6 +10,7 @@ import edu.metrostate.ics342.mediatracker.data.model.LibraryStatus
 import edu.metrostate.ics342.mediatracker.data.model.Media
 import edu.metrostate.ics342.mediatracker.data.model.MediaDetail
 import edu.metrostate.ics342.mediatracker.data.model.MediaNotFoundException
+import edu.metrostate.ics342.mediatracker.data.model.Quote
 import edu.metrostate.ics342.mediatracker.data.model.Review
 import retrofit2.Response
 
@@ -139,5 +140,40 @@ class DefaultMediaRepository(sessionRepository: SessionRepository) {
         val response = api.getReviews(mediaId)
         if (!response.isSuccessful) return emptyList()
         return response.body() ?: emptyList()
+    }
+
+    // ── Quotes (Week 1) ─────────────────────────────────────────────────
+
+    /**
+     * Returns the current user's own quotes (public + private mixed, no filter yet).
+     * Failures are swallowed to an empty list, matching [getReviews]'s best-effort style —
+     * quotes are supplementary content on the detail screen, not something that should
+     * fail the whole screen if this one call has trouble.
+     */
+    suspend fun getQuotes(): List<Quote> {
+        val response = api.getQuotes()
+        if (!response.isSuccessful) return emptyList()
+        return response.body() ?: emptyList()
+    }
+
+    suspend fun createQuote(
+        mediaId: Int,
+        quoteText: String,
+        pageNumber: Int?,
+        isPublic: Boolean
+    ): Quote {
+        val response = api.createQuote(
+            CreateQuoteRequest(
+                mediaId    = mediaId,
+                quoteText  = quoteText,
+                pageNumber = pageNumber,
+                isPublic   = isPublic
+            )
+        )
+        if (!response.isSuccessful) {
+            val message = parseErrorMessage(response) ?: "Failed to save quote (${response.code()})"
+            error(message)
+        }
+        return response.body() ?: error("Empty body creating quote for mediaId $mediaId")
     }
 }

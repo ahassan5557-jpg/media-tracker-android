@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.MoreVert
@@ -23,6 +24,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,6 +33,7 @@ import edu.metrostate.ics342.mediatracker.R
 import edu.metrostate.ics342.mediatracker.data.model.LibraryStatus
 import edu.metrostate.ics342.mediatracker.data.model.MediaDetail
 import edu.metrostate.ics342.mediatracker.data.model.MediaType
+import edu.metrostate.ics342.mediatracker.data.model.Quote
 import edu.metrostate.ics342.mediatracker.data.model.Review
 import edu.metrostate.ics342.mediatracker.data.model.creatorCredit
 import edu.metrostate.ics342.mediatracker.theme.MovieContainer
@@ -50,6 +53,7 @@ fun MediaDetailScreen(
     val actionError by viewModel.actionError.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
+    var showAddQuoteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(mediaId) { viewModel.load(mediaId) }
 
@@ -123,10 +127,11 @@ fun MediaDetailScreen(
 
                 is MediaDetailUiState.Success -> {
                     SuccessContent(
-                        state           = state,
-                        onAddToLibrary  = { viewModel.addToLibrary() },
+                        state            = state,
+                        onAddToLibrary   = { viewModel.addToLibrary() },
                         onToggleFavorite = { viewModel.toggleFavorite() },
-                        onWriteReview   = onWriteReview
+                        onWriteReview    = onWriteReview,
+                        onAddQuote       = { showAddQuoteDialog = true }
                     )
                 }
             }
@@ -137,6 +142,75 @@ fun MediaDetailScreen(
             modifier  = Modifier.align(Alignment.BottomCenter)
         )
     }
+
+    if (showAddQuoteDialog) {
+        AddQuoteDialog(
+            onDismiss = { showAddQuoteDialog = false },
+            onSave    = { quoteText, pageNumber, isPublic ->
+                viewModel.addQuote(quoteText, pageNumber, isPublic)
+                showAddQuoteDialog = false
+            }
+        )
+    }
+}
+
+/**
+ * Minimal Week 1 form: quote text (required, capped client-side at 500 chars to match the
+ * server's limit), an optional page number, and a public/private toggle that defaults to
+ * false — private-by-default is the safer UI default even though the server would also
+ * default it to false if omitted.
+ */
+@Composable
+private fun AddQuoteDialog(
+    onDismiss: () -> Unit,
+    onSave: (quoteText: String, pageNumber: Int?, isPublic: Boolean) -> Unit
+) {
+    var quoteText by remember { mutableStateOf("") }
+    var pageNumberText by remember { mutableStateOf("") }
+    var isPublic by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Save a quote") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value         = quoteText,
+                    onValueChange = { if (it.length <= 500) quoteText = it },
+                    label         = { Text("Quote") },
+                    supportingText = { Text("${quoteText.length}/500") },
+                    minLines      = 3,
+                    modifier      = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value         = pageNumberText,
+                    onValueChange = { input -> if (input.all { it.isDigit() }) pageNumberText = input },
+                    label         = { Text("Page number (optional)") },
+                    modifier      = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Make public", modifier = Modifier.weight(1f))
+                    Switch(checked = isPublic, onCheckedChange = { isPublic = it })
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = quoteText.isNotBlank(),
+                onClick = {
+                    onSave(quoteText.trim(), pageNumberText.toIntOrNull(), isPublic)
+                }
+            ) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable
@@ -144,7 +218,8 @@ private fun SuccessContent(
     state: MediaDetailUiState.Success,
     onAddToLibrary: () -> Unit,
     onToggleFavorite: () -> Unit,
-    onWriteReview: (Int) -> Unit
+    onWriteReview: (Int) -> Unit,
+    onAddQuote: () -> Unit
 ) {
     val detail = state.detail
     Column(
@@ -253,6 +328,38 @@ private fun SuccessContent(
 
         Spacer(Modifier.height(20.dp))
 
+        // ── Quotes ───────────────────────────────────────────────────────
+        Row(
+            modifier          = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SectionCaption(
+                text     = "Quotes (${state.quotes.size})",
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onAddQuote) {
+                Text("Add Quote")
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        if (state.quotes.isEmpty()) {
+            Text(
+                text     = "No quotes saved yet — add one above.",
+                style    = MaterialTheme.typography.bodyMedium,
+                color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        } else {
+            state.quotes.forEach { quote ->
+                QuoteCard(quote)
+                Spacer(Modifier.height(10.dp))
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
         // ── Reviews ──────────────────────────────────────────────────────
         Row(
             modifier          = Modifier.fillMaxWidth(),
@@ -280,6 +387,45 @@ private fun SuccessContent(
             state.reviews.forEach { review ->
                 ReviewCard(review)
                 Spacer(Modifier.height(10.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuoteCard(quote: Quote) {
+    Card(
+        modifier  = Modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(12.dp),
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(modifier = Modifier.padding(16.dp)) {
+            Icon(
+                Icons.Filled.FormatQuote,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text  = quote.quoteText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontStyle = FontStyle.Italic
+                )
+                if (quote.pageNumber != null || quote.media != null) {
+                    Spacer(Modifier.height(6.dp))
+                    val caption = buildList {
+                        quote.media?.title?.let { add(it) }
+                        quote.pageNumber?.let { add("p. $it") }
+                    }.joinToString(" · ")
+                    Text(
+                        text  = caption,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
