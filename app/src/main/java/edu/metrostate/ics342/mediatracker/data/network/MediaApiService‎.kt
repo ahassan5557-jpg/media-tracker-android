@@ -4,6 +4,7 @@ import edu.metrostate.ics342.mediatracker.data.model.Favorite
 import edu.metrostate.ics342.mediatracker.data.model.LibraryItem
 import edu.metrostate.ics342.mediatracker.data.model.Media
 import edu.metrostate.ics342.mediatracker.data.model.MediaDetail
+import edu.metrostate.ics342.mediatracker.data.model.Quote
 import edu.metrostate.ics342.mediatracker.data.model.Review
 import retrofit2.Response
 import retrofit2.http.*
@@ -53,4 +54,31 @@ interface MediaApiService {
 
     @GET("reviews")
     suspend fun getReviews(@Query("mediaId") mediaId: Int): Response<List<Review>>
+
+    // ── Quotes ──────────────────────────────────────────────────────────
+    // Week 1: only getQuotes + createQuote are actually called.
+    // PUT/DELETE/likes are declared now so Week 2 doesn't require touching this file again.
+
+    @GET("quotes")
+    suspend fun getQuotes(
+        @Query("public") public: Boolean? = null
+    ): Response<List<Quote>>
+
+    @POST("quotes")
+    suspend fun createQuote(@Body body: CreateQuoteRequest): Response<Quote>
+
+    @PUT("quotes/{id}")
+    suspend fun updateQuote(
+        @Path("id") id: Int,
+        @Body body: UpdateQuoteRequest
+    ): Response<Quote>
+
+    @DELETE("quotes/{id}")
+    suspend fun deleteQuote(@Path("id") id: Int): Response<Unit>
+
+    @POST("quotes/{id}/likes")
+    suspend fun likeQuote(@Path("id") id: Int): Response<Unit>
+
+    @DELETE("quotes/{id}/likes")
+    suspend fun unlikeQuote(@Path("id") id: Int): Response<Unit>
 }
