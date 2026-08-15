@@ -8,7 +8,7 @@ import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-
+@Serializable
 data class LibraryItem(
     val userId: String,
     val mediaId: Int,

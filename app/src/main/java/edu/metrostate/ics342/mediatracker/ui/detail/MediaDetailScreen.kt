@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Star
@@ -54,6 +56,8 @@ fun MediaDetailScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddQuoteDialog by remember { mutableStateOf(false) }
+    var quoteBeingEdited by remember { mutableStateOf<Quote?>(null) }
+    var quotePendingDelete by remember { mutableStateOf<Quote?>(null) }
 
     LaunchedEffect(mediaId) { viewModel.load(mediaId) }
 
@@ -77,7 +81,7 @@ fun MediaDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* TODO: overflow menu */ }) {
+                    IconButton(onClick = {  }) {
                         Icon(
                             Icons.Outlined.MoreVert,
                             contentDescription = stringResource(R.string.action_more_options)
@@ -131,7 +135,9 @@ fun MediaDetailScreen(
                         onAddToLibrary   = { viewModel.addToLibrary() },
                         onToggleFavorite = { viewModel.toggleFavorite() },
                         onWriteReview    = onWriteReview,
-                        onAddQuote       = { showAddQuoteDialog = true }
+                        onAddQuote       = { showAddQuoteDialog = true },
+                        onEditQuote      = { quoteBeingEdited = it },
+                        onDeleteQuote    = { quotePendingDelete = it }
                     )
                 }
             }
@@ -144,7 +150,8 @@ fun MediaDetailScreen(
     }
 
     if (showAddQuoteDialog) {
-        AddQuoteDialog(
+        QuoteFormDialog(
+            initial   = null,
             onDismiss = { showAddQuoteDialog = false },
             onSave    = { quoteText, pageNumber, isPublic ->
                 viewModel.addQuote(quoteText, pageNumber, isPublic)
@@ -152,26 +159,49 @@ fun MediaDetailScreen(
             }
         )
     }
+
+    quoteBeingEdited?.let { quote ->
+        QuoteFormDialog(
+            initial   = quote,
+            onDismiss = { quoteBeingEdited = null },
+            onSave    = { quoteText, pageNumber, isPublic ->
+                viewModel.editQuote(quote.id, quoteText, pageNumber, isPublic)
+                quoteBeingEdited = null
+            }
+        )
+    }
+
+    quotePendingDelete?.let { quote ->
+        AlertDialog(
+            onDismissRequest = { quotePendingDelete = null },
+            title = { Text("Delete this quote?") },
+            text = { Text("This can't be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteQuote(quote.id)
+                    quotePendingDelete = null
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { quotePendingDelete = null }) { Text("Cancel") }
+            }
+        )
+    }
 }
 
-/**
- * Minimal Week 1 form: quote text (required, capped client-side at 500 chars to match the
- * server's limit), an optional page number, and a public/private toggle that defaults to
- * false — private-by-default is the safer UI default even though the server would also
- * default it to false if omitted.
- */
 @Composable
-private fun AddQuoteDialog(
+private fun QuoteFormDialog(
+    initial: Quote?,
     onDismiss: () -> Unit,
     onSave: (quoteText: String, pageNumber: Int?, isPublic: Boolean) -> Unit
 ) {
-    var quoteText by remember { mutableStateOf("") }
-    var pageNumberText by remember { mutableStateOf("") }
-    var isPublic by remember { mutableStateOf(false) }
+    var quoteText by remember { mutableStateOf(initial?.quoteText ?: "") }
+    var pageNumberText by remember { mutableStateOf(initial?.pageNumber?.toString() ?: "") }
+    var isPublic by remember { mutableStateOf(initial?.isPublic ?: false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Save a quote") },
+        title = { Text(if (initial == null) "Save a quote" else "Edit quote") },
         text = {
             Column {
                 OutlinedTextField(
@@ -202,9 +232,7 @@ private fun AddQuoteDialog(
         confirmButton = {
             TextButton(
                 enabled = quoteText.isNotBlank(),
-                onClick = {
-                    onSave(quoteText.trim(), pageNumberText.toIntOrNull(), isPublic)
-                }
+                onClick = { onSave(quoteText.trim(), pageNumberText.toIntOrNull(), isPublic) }
             ) { Text("Save") }
         },
         dismissButton = {
@@ -219,7 +247,9 @@ private fun SuccessContent(
     onAddToLibrary: () -> Unit,
     onToggleFavorite: () -> Unit,
     onWriteReview: (Int) -> Unit,
-    onAddQuote: () -> Unit
+    onAddQuote: () -> Unit,
+    onEditQuote: (Quote) -> Unit,
+    onDeleteQuote: (Quote) -> Unit
 ) {
     val detail = state.detail
     Column(
@@ -228,81 +258,44 @@ private fun SuccessContent(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // ── Cover + title + credit + rating ──────────────────────────────
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             MediaCover(detail)
-
             Spacer(Modifier.height(14.dp))
-
-            Text(
-                text       = detail.title,
-                style      = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Text(text = detail.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(2.dp))
             Text(
                 text  = detail.creatorCredit(LocalContext.current),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
             Spacer(Modifier.height(8.dp))
-            RatingSummary(
-                averageRating = detail.averageRating,
-                ratingCount   = detail.ratingCount
-            )
+            RatingSummary(averageRating = detail.averageRating, ratingCount = detail.ratingCount)
         }
 
         Spacer(Modifier.height(20.dp))
 
-        // ── Action buttons ───────────────────────────────────────────────
-        Row(
-            modifier             = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (state.libraryStatus != null) {
-                FilledTonalButton(
-                    onClick   = { /* already in library — status change happens from the Library screen */ },
-                    modifier  = Modifier.weight(1f)
-                ) {
+                FilledTonalButton(onClick = {}, modifier = Modifier.weight(1f)) {
                     Text(stringResource(state.libraryStatus.labelRes))
                 }
             } else {
-                Button(
-                    onClick  = onAddToLibrary,
-                    modifier = Modifier.weight(1f)
-                ) {
+                Button(onClick = onAddToLibrary, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.detail_add_want_to))
                 }
             }
-
-            // Optimistic toggle — the heart flips the instant you tap it, no network wait.
             if (state.isFavorited) {
-                FilledTonalButton(
-                    onClick  = onToggleFavorite,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        Icons.Filled.Favorite,
-                        contentDescription = null,
-                        modifier           = Modifier.size(18.dp)
-                    )
+                FilledTonalButton(onClick = onToggleFavorite, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Filled.Favorite, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.detail_saved))
                 }
             } else {
-                OutlinedButton(
-                    onClick  = onToggleFavorite,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        Icons.Outlined.FavoriteBorder,
-                        contentDescription = null,
-                        modifier           = Modifier.size(18.dp)
-                    )
+                OutlinedButton(onClick = onToggleFavorite, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.FavoriteBorder, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.detail_save))
                 }
@@ -311,37 +304,21 @@ private fun SuccessContent(
 
         Spacer(Modifier.height(20.dp))
 
-        // ── About ────────────────────────────────────────────────────────
         if (!detail.description.isNullOrBlank()) {
             SectionCaption(stringResource(R.string.detail_about))
             Spacer(Modifier.height(6.dp))
-            Text(
-                text  = detail.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text(text = detail.description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(20.dp))
         }
 
-        // ── Stat grid ────────────────────────────────────────────────────
         StatGrid(detail)
-
         Spacer(Modifier.height(20.dp))
 
-        // ── Quotes ───────────────────────────────────────────────────────
-        Row(
-            modifier          = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SectionCaption(
-                text     = "Quotes (${state.quotes.size})",
-                modifier = Modifier.weight(1f)
-            )
-            TextButton(onClick = onAddQuote) {
-                Text("Add Quote")
-            }
-        }
 
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            SectionCaption(text = "Quotes (${state.quotes.size})", modifier = Modifier.weight(1f))
+            TextButton(onClick = onAddQuote) { Text("Add Quote") }
+        }
         Spacer(Modifier.height(4.dp))
 
         if (state.quotes.isEmpty()) {
@@ -353,27 +330,25 @@ private fun SuccessContent(
             )
         } else {
             state.quotes.forEach { quote ->
-                QuoteCard(quote)
+                QuoteCard(
+                    quote     = quote,
+                    isOwnQuote = quote.userId == state.currentUserId,
+                    onEdit    = { onEditQuote(quote) },
+                    onDelete  = { onDeleteQuote(quote) }
+                )
                 Spacer(Modifier.height(10.dp))
             }
         }
 
         Spacer(Modifier.height(20.dp))
 
-        // ── Reviews ──────────────────────────────────────────────────────
-        Row(
-            modifier          = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             SectionCaption(
                 text     = stringResource(R.string.detail_reviews_count, detail.reviewCount),
                 modifier = Modifier.weight(1f)
             )
-            TextButton(onClick = { onWriteReview(detail.id) }) {
-                Text(stringResource(R.string.detail_write_review))
-            }
+            TextButton(onClick = { onWriteReview(detail.id) }) { Text(stringResource(R.string.detail_write_review)) }
         }
-
         Spacer(Modifier.height(4.dp))
 
         if (state.reviews.isEmpty()) {
@@ -393,7 +368,12 @@ private fun SuccessContent(
 }
 
 @Composable
-private fun QuoteCard(quote: Quote) {
+private fun QuoteCard(
+    quote: Quote,
+    isOwnQuote: Boolean,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     Card(
         modifier  = Modifier.fillMaxWidth(),
         shape     = RoundedCornerShape(12.dp),
@@ -409,22 +389,22 @@ private fun QuoteCard(quote: Quote) {
             )
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text  = quote.quoteText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontStyle = FontStyle.Italic
-                )
+                Text(text = quote.quoteText, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic)
                 if (quote.pageNumber != null || quote.media != null) {
                     Spacer(Modifier.height(6.dp))
                     val caption = buildList {
                         quote.media?.title?.let { add(it) }
                         quote.pageNumber?.let { add("p. $it") }
                     }.joinToString(" · ")
-                    Text(
-                        text  = caption,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(text = caption, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (isOwnQuote) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Filled.Edit, contentDescription = "Edit quote", modifier = Modifier.size(18.dp))
+                }
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Delete quote", modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -450,26 +430,18 @@ private fun MediaCover(detail: MediaDetail) {
     }
 
     Box(
-        modifier          = Modifier
-            .size(width = 110.dp, height = 160.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(containerColor),
+        modifier = Modifier.size(width = 110.dp, height = 160.dp).clip(RoundedCornerShape(12.dp)).background(containerColor),
         contentAlignment = Alignment.Center
     ) {
         if (detail.coverUrl != null) {
             AsyncImage(
-                model            = detail.coverUrl,
+                model              = detail.coverUrl,
                 contentDescription = detail.title,
-                contentScale     = ContentScale.Crop,
-                modifier         = Modifier.fillMaxSize()
+                contentScale       = ContentScale.Crop,
+                modifier           = Modifier.fillMaxSize()
             )
         } else {
-            Icon(
-                painter           = painterResource(placeholder),
-                contentDescription = null,
-                modifier           = Modifier.size(52.dp),
-                tint               = iconTint
-            )
+            Icon(painter = painterResource(placeholder), contentDescription = null, modifier = Modifier.size(52.dp), tint = iconTint)
         }
     }
 }
@@ -484,22 +456,12 @@ private fun RatingSummary(averageRating: Float, ratingCount: Int) {
         )
         return
     }
-
     Row(verticalAlignment = Alignment.CenterVertically) {
         StarRow(rating = averageRating)
         Spacer(Modifier.width(6.dp))
-        Text(
-            text       = "%.1f".format(averageRating),
-            style      = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.SemiBold,
-            color      = MaterialTheme.colorScheme.secondary
-        )
+        Text(text = "%.1f".format(averageRating), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.secondary)
         Spacer(Modifier.width(4.dp))
-        Text(
-            text  = "(${"%,d".format(ratingCount)})",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Text(text = "(${"%,d".format(ratingCount)})", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -513,12 +475,7 @@ private fun StarRow(rating: Float, starSize: Int = 16) {
                 rounded == i * 2 - 1 -> Icons.Outlined.StarHalf
                 else                 -> Icons.Outlined.StarBorder
             }
-            Icon(
-                imageVector        = icon,
-                contentDescription = null,
-                modifier           = Modifier.size(starSize.dp),
-                tint               = MaterialTheme.colorScheme.secondary
-            )
+            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(starSize.dp), tint = MaterialTheme.colorScheme.secondary)
         }
     }
 }
@@ -528,68 +485,32 @@ private fun StatGrid(detail: MediaDetail) {
     val stats = buildList {
         detail.publishedYear?.let { add(stringResource(R.string.detail_stat_year) to it.toString()) }
         when (detail.mediaType) {
-            MediaType.BOOK  -> detail.pageCount?.let {
-                add(stringResource(R.string.detail_stat_pages) to it.toString())
-            }
-            MediaType.MOVIE -> detail.runtimeMinutes?.let {
-                add(stringResource(R.string.detail_stat_runtime) to stringResource(R.string.detail_runtime_minutes, it))
-            }
-            MediaType.SHOW  -> detail.seasonCount?.let {
-                add(stringResource(R.string.detail_stat_seasons) to it.toString())
-            }
+            MediaType.BOOK  -> detail.pageCount?.let { add(stringResource(R.string.detail_stat_pages) to it.toString()) }
+            MediaType.MOVIE -> detail.runtimeMinutes?.let { add(stringResource(R.string.detail_stat_runtime) to stringResource(R.string.detail_runtime_minutes, it)) }
+            MediaType.SHOW  -> detail.seasonCount?.let { add(stringResource(R.string.detail_stat_seasons) to it.toString()) }
             MediaType.UNKNOWN -> Unit
         }
-        detail.genres.firstOrNull()?.let {
-            add(stringResource(R.string.detail_stat_genre) to it)
-        }
+        detail.genres.firstOrNull()?.let { add(stringResource(R.string.detail_stat_genre) to it) }
     }
-
-    Row(
-        modifier             = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        stats.forEach { (label, value) ->
-            StatBox(label = label, value = value, modifier = Modifier.weight(1f))
-        }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        stats.forEach { (label, value) -> StatBox(label = label, value = value, modifier = Modifier.weight(1f)) }
     }
 }
 
 @Composable
 private fun StatBox(label: String, value: String, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier,
-        shape    = RoundedCornerShape(12.dp),
-        color    = MaterialTheme.colorScheme.surfaceVariant
-    ) {
-        Column(
-            modifier             = Modifier.padding(vertical = 12.dp, horizontal = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text  = label.uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+    Surface(modifier = modifier, shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+        Column(modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = label.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
-            Text(
-                text       = value,
-                style      = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines   = 1
-            )
+            Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
 }
 
 @Composable
 private fun SectionCaption(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text       = text.uppercase(),
-        style      = MaterialTheme.typography.labelMedium,
-        fontWeight = FontWeight.SemiBold,
-        color      = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier   = modifier
-    )
+    Text(text = text.uppercase(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = modifier)
 }
 
 @Composable
@@ -603,21 +524,12 @@ private fun ReviewCard(review: Review) {
         Row(modifier = Modifier.padding(16.dp)) {
             val displayName = review.user?.displayName ?: "?"
             Box(
-                modifier         = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
+                modifier = Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text  = displayName.firstOrNull()?.uppercase() ?: "?",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
+                Text(text = displayName.firstOrNull()?.uppercase() ?: "?", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
             }
-
             Spacer(Modifier.width(12.dp))
-
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -626,21 +538,13 @@ private fun ReviewCard(review: Review) {
                         fontWeight = FontWeight.SemiBold,
                         modifier   = Modifier.weight(1f)
                     )
-                    Text(
-                        text  = review.createdAt.take(10),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(text = review.createdAt.take(10), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Spacer(Modifier.height(4.dp))
                 StarRow(rating = review.rating.toFloat(), starSize = 14)
                 if (!review.reviewText.isNullOrBlank()) {
                     Spacer(Modifier.height(4.dp))
-                    Text(
-                        text  = review.reviewText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(text = review.reviewText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

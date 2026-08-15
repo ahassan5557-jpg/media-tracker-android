@@ -1,8 +1,8 @@
 package edu.metrostate.ics342.mediatracker.data.network
 
-//import edu.metrostate.ics342.mediatracker.data.SessionRepository
 import edu.metrostate.ics342.mediatracker.data.model.DuplicateFavoriteException
 import edu.metrostate.ics342.mediatracker.data.model.DuplicateLibraryException
+import edu.metrostate.ics342.mediatracker.data.model.DuplicateLikeException
 import edu.metrostate.ics342.mediatracker.data.model.ErrorResponse
 import edu.metrostate.ics342.mediatracker.data.model.Favorite
 import edu.metrostate.ics342.mediatracker.data.model.LibraryItem
@@ -22,6 +22,12 @@ data class MediaPage(
 
 data class LibraryPage(
     val items: List<LibraryItem>,
+    val nextCursor: String?,
+    val hasMore: Boolean
+)
+
+data class QuotePage(
+    val items: List<Quote>,
     val nextCursor: String?,
     val hasMore: Boolean
 )
@@ -61,7 +67,6 @@ class DefaultMediaRepository(sessionRepository: SessionRepository) {
         return response.body() ?: error("Empty body for media detail $id")
     }
 
-    /** Returns null when the item is not in the library (HTTP 404). Throws for other errors. */
     suspend fun getLibraryItem(mediaId: Int): LibraryItem? {
         val response = api.getLibraryItem(mediaId)
         if (response.code() == 404) return null
@@ -69,7 +74,6 @@ class DefaultMediaRepository(sessionRepository: SessionRepository) {
         return response.body()
     }
 
-    /** Throws [DuplicateLibraryException] when the item is already in the library (HTTP 409). */
     suspend fun addToLibrary(mediaId: Int, status: LibraryStatus): LibraryItem {
         val response = api.addToLibrary(AddToLibraryRequest(mediaId, status))
         if (response.code() == 409) throw DuplicateLibraryException()
@@ -109,7 +113,6 @@ class DefaultMediaRepository(sessionRepository: SessionRepository) {
         return LibraryPage(items, nextCursor, hasMore)
     }
 
-    /** Returns null when the item is not favorited (HTTP 404). Throws for other errors. */
     suspend fun getFavorite(mediaId: Int): Favorite? {
         val response = api.getFavorite(mediaId)
         if (response.code() == 404) return null
@@ -117,7 +120,6 @@ class DefaultMediaRepository(sessionRepository: SessionRepository) {
         return response.body()
     }
 
-    /** Throws [DuplicateFavoriteException] when the item is already favorited (HTTP 409). */
     suspend fun addFavorite(mediaId: Int): Favorite {
         val response = api.addFavorite(AddToFavoritesRequest(mediaId))
         if (response.code() == 409) throw DuplicateFavoriteException()
@@ -142,18 +144,24 @@ class DefaultMediaRepository(sessionRepository: SessionRepository) {
         return response.body() ?: emptyList()
     }
 
-    // ── Quotes (Week 1) ─────────────────────────────────────────────────
 
-    /**
-     * Returns the current user's own quotes (public + private mixed, no filter yet).
-     * Failures are swallowed to an empty list, matching [getReviews]'s best-effort style —
-     * quotes are supplementary content on the detail screen, not something that should
-     * fail the whole screen if this one call has trouble.
-     */
     suspend fun getQuotes(): List<Quote> {
         val response = api.getQuotes()
         if (!response.isSuccessful) return emptyList()
         return response.body() ?: emptyList()
+    }
+
+
+    suspend fun getPublicQuotes(after: String? = null): QuotePage {
+        val response = api.getQuotes(public = true, after = after)
+        if (!response.isSuccessful) {
+            val message = parseErrorMessage(response) ?: "Failed to load public quotes (${response.code()})"
+            error(message)
+        }
+        val items      = response.body() ?: emptyList()
+        val nextCursor = response.headers()["X-Next-Cursor"]
+        val hasMore    = response.headers()["X-Has-More"] == "true"
+        return QuotePage(items, nextCursor, hasMore)
     }
 
     suspend fun createQuote(
@@ -175,5 +183,51 @@ class DefaultMediaRepository(sessionRepository: SessionRepository) {
             error(message)
         }
         return response.body() ?: error("Empty body creating quote for mediaId $mediaId")
+    }
+
+    suspend fun updateQuote(
+        quoteId: Int,
+        quoteText: String,
+        pageNumber: Int?,
+        isPublic: Boolean
+    ): Quote {
+        val response = api.updateQuote(
+            id   = quoteId,
+            body = UpdateQuoteRequest(
+                quoteText  = quoteText,
+                pageNumber = pageNumber,
+                isPublic   = isPublic
+            )
+        )
+        if (!response.isSuccessful) {
+            val message = parseErrorMessage(response) ?: "Failed to update quote (${response.code()})"
+            error(message)
+        }
+        return response.body() ?: error("Empty body updating quote $quoteId")
+    }
+
+    suspend fun deleteQuote(quoteId: Int) {
+        val response = api.deleteQuote(quoteId)
+        if (!response.isSuccessful) {
+            val message = parseErrorMessage(response) ?: "Failed to delete quote (${response.code()})"
+            error(message)
+        }
+    }
+
+    suspend fun likeQuote(quoteId: Int) {
+        val response = api.likeQuote(quoteId)
+        if (response.code() == 409) throw DuplicateLikeException()
+        if (!response.isSuccessful) {
+            val message = parseErrorMessage(response) ?: "Failed to like quote (${response.code()})"
+            error(message)
+        }
+    }
+
+    suspend fun unlikeQuote(quoteId: Int) {
+        val response = api.unlikeQuote(quoteId)
+        if (!response.isSuccessful) {
+            val message = parseErrorMessage(response) ?: "Failed to unlike quote (${response.code()})"
+            error(message)
+        }
     }
 }
