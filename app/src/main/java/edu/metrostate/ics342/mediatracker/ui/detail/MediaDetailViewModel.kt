@@ -12,6 +12,7 @@ import edu.metrostate.ics342.mediatracker.data.model.MediaNotFoundException
 import edu.metrostate.ics342.mediatracker.data.model.Quote
 import edu.metrostate.ics342.mediatracker.data.model.Review
 import edu.metrostate.ics342.mediatracker.data.network.DefaultMediaRepository
+import edu.metrostate.ics342.mediatracker.data.network.SessionRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,14 +29,17 @@ sealed interface MediaDetailUiState {
         val libraryStatus: LibraryStatus?,
         val isFavorited: Boolean,
         val reviews: List<Review>,
-        val quotes: List<Quote> = emptyList()
+        val quotes: List<Quote> = emptyList(),
+        val currentUserId: String? = null
     ) : MediaDetailUiState
 }
 
 class MediaDetailViewModel @JvmOverloads constructor(
     application: Application,
     private val repository: DefaultMediaRepository =
-        DefaultMediaRepository(DefaultSessionRepository(application))
+        DefaultMediaRepository(DefaultSessionRepository(application)),
+    private val sessionRepository: SessionRepository =
+        DefaultSessionRepository(application)
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow<MediaDetailUiState>(MediaDetailUiState.Loading)
@@ -50,41 +54,28 @@ class MediaDetailViewModel @JvmOverloads constructor(
         currentMediaId = mediaId
         _uiState.value = MediaDetailUiState.Loading
         viewModelScope.launch {
-            // IMPORTANT: wrapped in supervisorScope. Without it, any one of these async{}
-            // children throwing (e.g. MediaNotFoundException from detailDeferred) cancels
-            // ALL siblings and the parent immediately, via structured concurrency — before
-            // the try/catch below ever gets a chance to run. That was crashing the app.
+            val userId = runCatching { sessionRepository.getUser()?.id }.getOrNull()
+
             supervisorScope {
-                // All five start concurrently. Library, favorite, reviews, and quotes are
-                // best-effort: their failures are swallowed so only the detail request can
-                // fail the screen.
                 val detailDeferred   = async { repository.getMediaDetail(mediaId) }
                 val libraryDeferred  = async { runCatching { repository.getLibraryItem(mediaId) }.getOrNull() }
                 val favoriteDeferred = async { runCatching { repository.getFavorite(mediaId) }.getOrNull() }
                 val reviewsDeferred  = async { runCatching { repository.getReviews(mediaId) }.getOrElse { emptyList() } }
-                // getQuotes() returns *all* of the current user's quotes across every piece
-                // of media, so it's filtered down to this screen's mediaId client-side —
-                // there's no server-side filter for "quotes for this media."
                 val quotesDeferred   = async {
                     runCatching { repository.getQuotes() }.getOrElse { emptyList() }
                         .filter { it.mediaId == mediaId }
                 }
 
-                // Await detail first — if it fails fast we don't block on slower secondary calls.
                 val detail = try {
                     detailDeferred.await()
                 } catch (e: MediaNotFoundException) {
-                    libraryDeferred.cancel()
-                    favoriteDeferred.cancel()
-                    reviewsDeferred.cancel()
-                    quotesDeferred.cancel()
+                    libraryDeferred.cancel(); favoriteDeferred.cancel()
+                    reviewsDeferred.cancel(); quotesDeferred.cancel()
                     _uiState.value = MediaDetailUiState.NotFound
                     return@supervisorScope
                 } catch (e: Exception) {
-                    libraryDeferred.cancel()
-                    favoriteDeferred.cancel()
-                    reviewsDeferred.cancel()
-                    quotesDeferred.cancel()
+                    libraryDeferred.cancel(); favoriteDeferred.cancel()
+                    reviewsDeferred.cancel(); quotesDeferred.cancel()
                     _uiState.value = MediaDetailUiState.Error(e.message ?: "Unknown error")
                     return@supervisorScope
                 }
@@ -94,13 +85,13 @@ class MediaDetailViewModel @JvmOverloads constructor(
                     libraryStatus = libraryDeferred.await()?.status,
                     isFavorited   = favoriteDeferred.await() != null,
                     reviews       = reviewsDeferred.await(),
-                    quotes        = quotesDeferred.await()
+                    quotes        = quotesDeferred.await(),
+                    currentUserId = userId
                 )
             }
         }
     }
 
-    /** Optimistic: the button flips to "in library" instantly; the POST happens in the background. */
     fun addToLibrary() {
         val current = _uiState.value as? MediaDetailUiState.Success ?: return
         val mediaId = currentMediaId ?: return
@@ -110,7 +101,6 @@ class MediaDetailViewModel @JvmOverloads constructor(
             try {
                 repository.addToLibrary(mediaId, LibraryStatus.WANT_TO)
             } catch (e: DuplicateLibraryException) {
-                // Already in the library server-side — the optimistic state is already correct.
             } catch (e: Exception) {
                 val updated = _uiState.value as? MediaDetailUiState.Success ?: return@launch
                 _uiState.value = updated.copy(libraryStatus = null)
@@ -119,7 +109,6 @@ class MediaDetailViewModel @JvmOverloads constructor(
         }
     }
 
-    /** Optimistic: the heart flips instantly; POST/DELETE /favorites happens in the background. */
     fun toggleFavorite() {
         val current = _uiState.value as? MediaDetailUiState.Success ?: return
         val mediaId = currentMediaId ?: return
@@ -129,7 +118,6 @@ class MediaDetailViewModel @JvmOverloads constructor(
             try {
                 if (wasFavorited) repository.removeFavorite(mediaId) else repository.addFavorite(mediaId)
             } catch (e: DuplicateFavoriteException) {
-                // Already favorited server-side — the optimistic "favorited" state is already correct.
             } catch (e: Exception) {
                 val updated = _uiState.value as? MediaDetailUiState.Success ?: return@launch
                 _uiState.value = updated.copy(isFavorited = wasFavorited)
@@ -138,11 +126,6 @@ class MediaDetailViewModel @JvmOverloads constructor(
         }
     }
 
-    /**
-     * Not optimistic (unlike addToLibrary/toggleFavorite) because we need the server-assigned
-     * quote `id` back before it can be edited/deleted/liked — so the list only updates once
-     * the POST actually succeeds.
-     */
     fun addQuote(quoteText: String, pageNumber: Int?, isPublic: Boolean) {
         val current = _uiState.value as? MediaDetailUiState.Success ?: return
         val mediaId = currentMediaId ?: return
@@ -150,16 +133,43 @@ class MediaDetailViewModel @JvmOverloads constructor(
 
         viewModelScope.launch {
             try {
-                val newQuote = repository.createQuote(
-                    mediaId    = mediaId,
-                    quoteText  = quoteText,
-                    pageNumber = pageNumber,
-                    isPublic   = isPublic
-                )
+                val newQuote = repository.createQuote(mediaId, quoteText, pageNumber, isPublic)
                 val updated = _uiState.value as? MediaDetailUiState.Success ?: return@launch
                 _uiState.value = updated.copy(quotes = updated.quotes + newQuote)
             } catch (e: Exception) {
                 _actionError.value = "Couldn't save quote. Try again."
+            }
+        }
+    }
+
+    fun editQuote(quoteId: Int, quoteText: String, pageNumber: Int?, isPublic: Boolean) {
+        val current = _uiState.value as? MediaDetailUiState.Success ?: return
+        if (quoteText.isBlank()) return
+
+        viewModelScope.launch {
+            try {
+                val updatedQuote = repository.updateQuote(quoteId, quoteText, pageNumber, isPublic)
+                val latest = _uiState.value as? MediaDetailUiState.Success ?: return@launch
+                _uiState.value = latest.copy(
+                    quotes = latest.quotes.map { if (it.id == quoteId) updatedQuote else it }
+                )
+            } catch (e: Exception) {
+                _actionError.value = "Couldn't update quote. Try again."
+            }
+        }
+    }
+
+    fun deleteQuote(quoteId: Int) {
+        val current = _uiState.value as? MediaDetailUiState.Success ?: return
+
+        _uiState.value = current.copy(quotes = current.quotes.filterNot { it.id == quoteId })
+        viewModelScope.launch {
+            try {
+                repository.deleteQuote(quoteId)
+            } catch (e: Exception) {
+                val latest = _uiState.value as? MediaDetailUiState.Success ?: return@launch
+                _uiState.value = latest.copy(quotes = current.quotes)
+                _actionError.value = "Couldn't delete quote. Try again."
             }
         }
     }

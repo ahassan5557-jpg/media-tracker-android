@@ -55,13 +55,13 @@ interface MediaApiService {
     @GET("reviews")
     suspend fun getReviews(@Query("mediaId") mediaId: Int): Response<List<Review>>
 
-    // ── Quotes ──────────────────────────────────────────────────────────
-    // Week 1: only getQuotes + createQuote are actually called.
-    // PUT/DELETE/likes are declared now so Week 2 doesn't require touching this file again.
+
 
     @GET("quotes")
     suspend fun getQuotes(
-        @Query("public") public: Boolean? = null
+        @Query("public") public: Boolean? = null,
+        @Query("limit") limit: Int = 20,
+        @Query("after") after: String? = null
     ): Response<List<Quote>>
 
     @POST("quotes")

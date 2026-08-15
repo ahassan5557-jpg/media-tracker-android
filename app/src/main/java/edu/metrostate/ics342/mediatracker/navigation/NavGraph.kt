@@ -1,5 +1,8 @@
 package edu.metrostate.ics342.mediatracker.navigation
 
+import androidx.navigation.NavOptionsBuilder
+
+
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -17,6 +20,7 @@ import edu.metrostate.ics342.mediatracker.ui.auth.LoginScreen
 import edu.metrostate.ics342.mediatracker.ui.auth.RegisterScreen
 import edu.metrostate.ics342.mediatracker.ui.connections.ConnectionsScreen
 import edu.metrostate.ics342.mediatracker.ui.detail.MediaDetailScreen
+import edu.metrostate.ics342.mediatracker.ui.quotes.PublicQuotesScreen
 import edu.metrostate.ics342.mediatracker.ui.search.SearchResultsScreen
 import edu.metrostate.ics342.mediatracker.ui.library.LibraryScreen
 import edu.metrostate.ics342.mediatracker.ui.profile.EditProfileScreen
@@ -53,51 +57,51 @@ fun MediaTrackerNavGraph(navController: NavHostController) {
             modifier         = Modifier.padding(innerPadding)
         ) {
 
-                composable(
-                    route     = "${Routes.LOGIN}?registered={registered}",
-                    arguments = listOf(navArgument("registered") {
-                        type         = NavType.BoolType
-                        defaultValue = false
-                    })
-                ) { backStackEntry ->
-                    val showRegistrationSuccess = backStackEntry.arguments?.getBoolean("registered") ?: false
-                    LoginScreen(
-                            showRegistrationSuccess = showRegistrationSuccess,
-                            onLoginSuccess          = {
-                                navController.navigate(Routes.ACTIVITY_FEED) {
-                                    popUpTo(Routes.LOGIN) { inclusive = true }
-                                }
-                            },
-                            onNavigateToRegister = { navController.navigate(Routes.REGISTER) }
-                            )
+            composable(
+                route     = "${Routes.LOGIN}?registered={registered}",
+                arguments = listOf(navArgument("registered") {
+                    type         = NavType.BoolType
+                    defaultValue = false
+                })
+            ) { backStackEntry ->
+                val showRegistrationSuccess = backStackEntry.arguments?.getBoolean("registered") ?: false
+                LoginScreen(
+                    showRegistrationSuccess = showRegistrationSuccess,
+                    onLoginSuccess          = {
+                        navController.navigate(Routes.ACTIVITY_FEED) {
+                            popUpTo(Routes.LOGIN) { inclusive = true }
                         }
+                    },
+                    onNavigateToRegister = { navController.navigate(Routes.REGISTER) }
+                )
+            }
 
-                                composable(Routes.REGISTER) {
-                            RegisterScreen(
-                                onRegisterSuccess = {
-                                        navController.navigate("${Routes.LOGIN}?registered=true") {
-                                            popUpTo(Routes.LOGIN) { inclusive = true }
-                                        }
-                                    },
-                                    onNavigateToLogin = { navController.popBackStack() }
-                                    )
-                                }
+            composable(Routes.REGISTER) {
+                RegisterScreen(
+                    onRegisterSuccess = {
+                        navController.navigate("${Routes.LOGIN}?registered=true") {
+                            popUpTo(Routes.LOGIN) { inclusive = true }
+                        }
+                    },
+                    onNavigateToLogin = { navController.popBackStack() }
+                )
+            }
 
-                                        composable(Routes.ACTIVITY_FEED) {
-                                    ActivityFeedScreen(
-                                        onMediaClick = { mediaId -> navController.navigate("media_detail/$mediaId") },
-                                        onUserClick  = { userId  -> navController.navigate("user_profile/$userId") }
-                                    )
-                                }
+            composable(Routes.ACTIVITY_FEED) {
+                ActivityFeedScreen(
+                    onMediaClick = { mediaId -> navController.navigate("media_detail/$mediaId") },
+                    onUserClick  = { userId  -> navController.navigate("user_profile/$userId") }
+                )
+            }
 
-                                        composable(Routes.SEARCH) {
-                                    SearchScreen(
-                                        onSearch = { query ->
-                                            navController.navigate("search_results?query=${Uri.encode(query)}")
-                                        },
-                                        onMediaClick = { mediaId -> navController.navigate("media_detail/$mediaId") }
-                                    )
-                                        }
+            composable(Routes.SEARCH) {
+                SearchScreen(
+                    onSearch = { query ->
+                        navController.navigate("search_results?query=${Uri.encode(query)}")
+                    },
+                    onMediaClick = { mediaId -> navController.navigate("media_detail/$mediaId") }
+                )
+            }
 
             composable(
                 route = Routes.SEARCH_RESULTS,
@@ -110,76 +114,84 @@ fun MediaTrackerNavGraph(navController: NavHostController) {
                 SearchResultsScreen(
                     initialQuery = query,
                     onBack       = { navController.popBackStack() },
-                                        onMediaClick = { mediaId -> navController.navigate("media_detail/$mediaId") }
-                                    )
-                                }
+                    onMediaClick = { mediaId -> navController.navigate("media_detail/$mediaId") }
+                )
+            }
 
-                                        composable(Routes.LIBRARY) {
-                                    LibraryScreen(
-                                        onMediaClick = { mediaId -> navController.navigate("media_detail/$mediaId") }
-                                    )
-                                }
+            composable(Routes.LIBRARY) {
+                LibraryScreen(
+                    onMediaClick = { mediaId -> navController.navigate("media_detail/$mediaId") }
+                )
+            }
 
             composable(
                 route     = Routes.MEDIA_DETAIL,
                 arguments = listOf(navArgument("mediaId") { type = NavType.IntType })
             ) { backStackEntry ->
                 val mediaId = backStackEntry.arguments?.getInt("mediaId") ?: return@composable
-                                    MediaDetailScreen(
-                                        mediaId        = mediaId,
-                                        onNavigateBack = { navController.popBackStack() },
-                                        onWriteReview  = { id -> navController.navigate("write_review/$id") }                                    )
-                                }
-
-                                        composable(
-                                        route     = Routes.WRITE_REVIEW,
-                                arguments = listOf(navArgument("mediaId") { type = NavType.IntType })
-                            ) { backStackEntry ->
-                                val mediaId = backStackEntry.arguments?.getInt("mediaId") ?: return@composable
-                                WriteReviewScreen(
-                                    mediaId        = mediaId,
-                                    onNavigateBack = { navController.popBackStack() }
-                                )
-                            }
-
-                            composable(Routes.MY_PROFILE) {
-                                MyProfileScreen(
-                                    onEditProfile   = { navController.navigate(Routes.EDIT_PROFILE) },
-                                    onSettingsClick = { navController.navigate(Routes.SETTINGS) }
-                                )
-                            }
-
-                            composable(
-                                route     = Routes.USER_PROFILE,
-                                arguments = listOf(navArgument("userId") { type = NavType.StringType })
-                            ) { backStackEntry ->
-                                val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
-                                UserProfileScreen(
-                                    userId         = userId,
-                                    onNavigateBack = { navController.popBackStack() },
-                                    onMediaClick   = { mediaId -> navController.navigate("media_detail/$mediaId") }
-                                )
-                            }
-
-                            composable(Routes.EDIT_PROFILE) {
-                                EditProfileScreen(onNavigateBack = { navController.popBackStack() })
-                            }
-
-                            composable(Routes.CONNECTIONS) {
-                                ConnectionsScreen(
-                                    onUserClick = { userId -> navController.navigate("user_profile/$userId") }
-                                )
-                            }
-
-                            composable(Routes.SETTINGS) {
-                                SettingsScreen(
-                                    onSignOut = {
-                                        navController.navigate(Routes.LOGIN) {
-                                            popUpTo(0) { inclusive = true }
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                }
+                MediaDetailScreen(
+                    mediaId        = mediaId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onWriteReview  = { id -> navController.navigate("write_review/$id") }                                    )
             }
+
+            composable(
+                route     = Routes.WRITE_REVIEW,
+                arguments = listOf(navArgument("mediaId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val mediaId = backStackEntry.arguments?.getInt("mediaId") ?: return@composable
+                WriteReviewScreen(
+                    mediaId        = mediaId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.MY_PROFILE) {
+                MyProfileScreen(
+                    onEditProfile   = { navController.navigate(Routes.EDIT_PROFILE) },
+                    onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+                    onBrowsePublicQuotes = { navController.navigate(Routes.PUBLIC_QUOTES) }
+                )
+            }
+
+            composable(Routes.PUBLIC_QUOTES) {
+                PublicQuotesScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route     = Routes.USER_PROFILE,
+                arguments = listOf(navArgument("userId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
+                UserProfileScreen(
+                    userId         = userId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onMediaClick   = { mediaId -> navController.navigate("media_detail/$mediaId") }
+                )
+            }
+
+            composable(Routes.EDIT_PROFILE) {
+                EditProfileScreen(onNavigateBack = { navController.popBackStack() })
+            }
+
+            composable(Routes.CONNECTIONS) {
+                ConnectionsScreen(
+                    onUserClick = { userId -> navController.navigate("user_profile/$userId") }
+                )
+            }
+
+            composable(Routes.SETTINGS) {
+                SettingsScreen(
+                    onSignOut = {
+                        navController.navigate(Routes.LOGIN) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+ 
