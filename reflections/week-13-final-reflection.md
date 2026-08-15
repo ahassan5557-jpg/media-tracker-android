@@ -18,19 +18,31 @@ There is no page minimum. There is a quality minimum. A response that takes two 
 
 **1a. Open your final pull request on GitHub. Find the commit that you are most proud of — not the largest, not the last one, the one that meant the most to you. Paste the commit URL here and explain why you chose it. What did it take to get there? What was broken before and what worked after?**
 
-> Your answer:
+> Your answer:https://github.com/ahassan5557-jpg/media-tracker-android/pull/10/changes/88cd2be467cd7b26f43686a2f75c7e630786a985
+I am most proud of this commit, this is  where I fixed SearchResultsViewModel to pull from the real backend instead of fakeSearchResults. Before this, 
+I could never actually reach a working Media Detail screen  every book I tapped said "media not found,". It took hours of debugging to even figure out 
+the search results were coming from the fakesearchreasults. i even wrote including writing a diagnostic test that swept 60 media IDs against the real 
+backend just to prove it wasn't my code. Getting that connected finally and watching a real book load with its summary, rating felt like reaching the peak of a mountain
 
 ---
 
 **1b. Name one screen in your app that you think is genuinely well-built. Not perfect — well-built. Explain specifically why: what design decisions did you make, what did you refactor, and how does it differ from how you would have approached it in week 2?**
 
 > Your answer:
+>I'd point to the Media Detail screen (because thats where i spent so much time lol)  It handles four distinct UI states cleanly — Loading, Not Found, Error, and Success so the screen never shows a blank crash instead it shows a real message when something goes wrong. 
+One specific decision I made was wrapping the concurrent data-loading calls (media detail, library status, favorite status, reviews, and quotes) in supervisorScope, after discovering the hard way that without it, one failed call (like a 404 on media detail) would cancel 
+every sibling coroutine and crash the whole app instead of just showing a "not found" message. I also refactored the quote-adding and quote-editing forms into a single shared QuoteFormDialog composable instead of writing two nearly identical dialogs, since the only real 
+difference between "add" and "edit" is whether the fields start pre-filled.
+If I'd built this in Week 2, I think I would've just wrapped each network call in its own try/catch and called it done, without realizing that concurrent coroutines under a shared scope can cancel each other even when each one looks individually protected. I only understood 
+that failure mode by actually hitting the crash, reading the stack trace, and researching why try/catch alone wasn't enough that's a level of understanding I didn't have earlier in the semester.
 
 ---
 
 **1c. Name one screen or feature that you are not satisfied with. What is wrong with it? If you had one more week, what specifically would you change?**
 
 > Your answer:
+> I'm not satisfied with the Public Quotes screen's pagination. The logic is there getPublicQuotes() reads the headers correctly, and the ViewModel appends new pages onto the existing list when "Load More" is tapped but I never actually got to see it fire against a real second page of data, since I didn't have enough public quotes in the shared backend to trigger it. So while it should work based on how I built it, I genuinely don't know if there's an off-by-one bug in the cursor handling or something else I'm not seeing.
+If I had another week, I'd want to seed enough test data or coordinate with classmates to actually generate a second page and confirm it appends correctly rather than duplicating items or skipping the boundary one  the "Load More" button i would like an infinite-scroll trigger loading more automatically near the bottom of the list would feel more polished than a manual button, but I ran out of time to build and test that version safely.
 
 ---
 
@@ -38,13 +50,39 @@ There is no page minimum. There is a quality minimum. A response that takes two 
 
 **2a. Describe the hardest bug you fixed this semester. Not the most recent one — the one that took the longest or cost you the most confusion. What was the symptom? What did you think the problem was at first? What was it actually? How did you find it?**
 
-> Your answer:
+> Your answer:The hardest bug I fixed this semester was the missing @Serializable annotation on my LibraryItem data class. The symptom looked serious and confusing at first the Library screen would crash immediately with "Unable to create converter for java.util.List<LibraryItem>," and separately, tapping the "Want To" button on Media Detail would fail with a generic "Couldn't add to library" error. At first I assumed these were two unrelated bugs, maybe something wrong with my navigation, my ViewModel state handling, or even a backend issue, since the error messages didn't obviously point at each other. It took walking through Logcat crash traces and comparing LibraryItem against my other models like Review (which worked fine) to notice the one difference: Review had @Serializable directly above its class declaration, and LibraryItem didn't.
+What made this bug so memorable wasn't its complexity  it was the opposite. The fix was a single missing line of code, @Serializable, placed above a class I must have looked at a dozen times without noticing it was missing. Two seemingly different crashes, hours of confusion, and the actual fix was one word. It taught me that the size of a bug's symptoms has nothing to do with the size of its cause
 
 ---
 
 **2b. Copy and paste the specific lines of code you changed to fix it. (This can be a before/after comparison, a diff, or just the relevant snippet.) Explain in plain English what the fix does and why it works.**
 
-> Your answer (include code):
+> Your answer (include code): 
+>                                                      this is the before 
+> 
+data class LibraryItem(
+val userId: String,
+val mediaId: Int,
+@Serializable(with = LibraryStatusSerializer::class)
+val status: LibraryStatus,
+val addedAt: String,
+val updatedAt: String,
+val media: Media? = null
+)
+                                                and this is the after
+@Serializable
+data class LibraryItem(
+val userId: String,
+val mediaId: Int,
+@Serializable(with = LibraryStatusSerializer::class)
+val status: LibraryStatus,
+val addedAt: String,
+val updatedAt: String,
+val media: Media? = null
+)
+the fix just adds @Serializable above the class name itself. Before, only one field inside LibraryItem (the status field) knew how to convert to/from JSON  but the class as a whole didn't. 
+Without that tag on the class, the app had no way to turn the server's response into a LibraryItem object at all, so it crashed before it even got to read any data. Adding @Serializable 
+tells the app "this whole class can be converted to and from JSON," which is all it needed to work.
 
 ---
 
@@ -52,7 +90,10 @@ There is no page minimum. There is a quality minimum. A response that takes two 
 
 **3a. Pick the concept from this semester that took the longest to actually understand — not just to implement, but to understand. Describe what you thought it was before you understood it, what changed, and how you would explain it now to a student who was exactly where you were at the start of the semester.**
 
-> Your answer:
+> Your answer: The concept that took me the longest to actually understand was StateFlow and unidirectional data flow between the ViewModel and the UI. At the start of the semester, I thought of _results and results the private mutable version and the public read-only version as basically the same thing with extra steps I didn't understand why you'd bother writing two versions of the same variable, or how changing a value in the ViewModel could make text on screen change without me writing any code that says "update the screen."
+> What changed was staring at code like SearchResultsViewModel, where _results.value = fakeSearchResults gets set inside applyFilter(), and realizing that SearchResultsScreen never "asks" for new results  it just declares val results by viewModel.results.collectAsState() once, and Compose automatically recomposes that part of the screen any time that value changes forever, without me writing a single line of refresh logic. That's when it clicked: the ViewModel doesn't talk to the UI directly at all. It just holds state and updates it; 
+> the UI is just "subscribed" to that state and reacts on its own. Before that, I was mentally modeling ViewModels like a function I call to get a result once not as something that continuously broadcasts its current state to anything listening.
+> I'd explain it to a student where I started like this, stop thinking of the ViewModel as something you "ask a question and get an answer from." Think of it as a radio station that's always broadcasting its current state, and the UI is just a radio tuned to that station  when the station's broadcast changes, every radio tuned to it updates automatically, without the station ever needing to know who's listening or manually telling them.
 
 ---
 
@@ -61,46 +102,92 @@ There is no page minimum. There is a quality minimum. A response that takes two 
 (If you can't access your early reflections, describe something you remember being confused about in the first half of the semester.)
 
 > Your answer:
+> In Week 3, I wrote that I didn't understand much of AuthModels.kt  not just the specific code, but the bigger picture of how it all fit together and what it was actually doing.
+Looking back, that clicked for me somewhere between then and now, mostly through building things that depended on it rather than re-reading the file itself. Once I built SessionRepository, DefaultUserRepository, and wired up the authenticated Retrofit client, it stopped being abstract. I understand now that auth comes down to three things: an access token, a refresh token, and a user object, all produced by login and stored so the app doesn't have to ask you to sign in on every screen.
+That model connected the dots for me: login isn't really about the screen with the email/password fields, it's about producing and storing that token so every other screen in the app can quietly reuse it. Once I saw that pattern reused for the Media Detail, Library, and Quotes features this semester, the whole idea of "authentication" went from a mysterious black box to something I could actually trace end-to-end.
+
 
 ---
 
 **3c. Name one thing a pod mate said, asked, or showed you during a code review or work session that changed how you approached something. It doesn't have to be a big thing. What was it, and what did it change?**
 
 > Your answer:
-
+My pod mate Fasika really helped me understand Git. I was unsure how it worked and worried about losing points or having files end up in the wrong place if I made a mistake. He walked me through how to commit, push, and pull, how to merge branches properly, and how to keep each week's work organized instead of everything getting tangled together. That completely changed my understanding of Git before that, I was hesitant and second-guessing every step, and afterward I actually understood what I was doing instead of just clicking buttons and hoping it worked. It helped me start the semester off on the right foot instead of struggling with basic version control on top of everything else I was learning.
 ---
 
 ## Part 4 — Your Bonus Feature
 
 **4a. Describe your bonus feature in one paragraph as if you were explaining it to someone who has never used an app before. What does it do? Why would a user want it?**
 
-> Your answer:
+> Your answer:My bonus feature lets you save your favorite lines from a book, movie, or show like underlining a passage that stuck with you, except it's saved right in the app instead of a physical book. When you're looking at a book's page, you can add a quote, note what page it was on, and choose whether to keep it just for yourself or share it publicly so other users can see it. You can also browse a feed of quotes other people have shared and "like" the ones you connect with, similar to liking a post. Someone would want this because it gives them a place to hold onto the moments in a story that actually meant something to them, instead of forgetting a great line a week later and sharing publicly lets them show other readers and viewers what stood out to them, the same way you might text a friend a quote from something you're reading or watching.
 
 ---
 
 **4b. What was the technically hardest part of building it? Name a specific function, flow, or data structure that gave you trouble, and explain what the problem was.**
 
-> Your answer:
+> Your answer: the technically hardest part for me was the load() function in MediaDetailViewModel, specifically getting the concurrent network calls to fail safely. The screen needs to fetch five things at once the media detail, library status, favorite status, reviews, and quotes using async so they don't run one after another and slow the screen down. The problem was that when the media detail call failed (like a "not found" error), it didn't just fail on its own  it cancelled every other coroutine running alongside it and crashed the entire app, even though I had a try/catch wrapped around it. It looked like the try/catch should have caught the error, but the crash still happened before my code could handle it.
+The actual issue was how Kotlin's structured concurrency works: when multiple async calls share the same parent scope, one child failing cancels its siblings and the parent immediately, before the try/catch around the .await() call even gets a chance to run. The fix was wrapping the whole block in supervisorScope, which changes that behavior so one failed child doesn't automatically take down the others  only the specific call actually gets caught. It took reading the crash's stack trace closely and researching why a try/catch I'd already written wasn't working to understand this.
 
 ---
 
 **4c. Your bonus feature has tests. Open the test file and paste the test you think is most valuable — the one that would catch the most important failure. Explain what it proves and what it does not prove.**
 
 > Your answer (include code):
+> @Test
+fun addQuote_appendsNewQuoteToSuccessState() = runTest(testDispatcher) {
+val application = mockk<Application>(relaxed = true)
+val repository = mockk<DefaultMediaRepository>()
+val sessionRepository = mockk<SessionRepository>()
 
+    val mediaId = 1
+    val fakeDetail = mockk<MediaDetail>(relaxed = true)
+
+    coEvery { sessionRepository.getUser() } returns null
+    coEvery { repository.getMediaDetail(mediaId) } returns fakeDetail
+    coEvery { repository.getLibraryItem(mediaId) } returns null
+    coEvery { repository.getFavorite(mediaId) } returns null
+    coEvery { repository.getReviews(mediaId) } returns emptyList()
+    coEvery { repository.getQuotes() } returns emptyList()
+
+    val newQuote = Quote(
+        id = 42, userId = "user-1", mediaId = mediaId,
+        quoteText = "A great line", pageNumber = 10,
+        isPublic = false, likeCount = 0, createdAt = "2026-01-01T00:00:00Z"
+    )
+    coEvery {
+        repository.createQuote(mediaId = mediaId, quoteText = "A great line", pageNumber = 10, isPublic = false)
+    } returns newQuote
+
+    val viewModel = MediaDetailViewModel(application, repository, sessionRepository)
+    viewModel.load(mediaId)
+    testDispatcher.scheduler.advanceUntilIdle()
+
+    viewModel.addQuote("A great line", 10, false)
+    testDispatcher.scheduler.advanceUntilIdle()
+
+    val updated = viewModel.uiState.value
+    assertTrue(updated is MediaDetailUiState.Success)
+    updated as MediaDetailUiState.Success
+    assertEquals(1, updated.quotes.size)
+    assertEquals("A great line", updated.quotes.first().quoteText)
+}
+it proves that when addQuote() is called on a successfully loaded screen, the ViewModel correctly calls the repository with the right parameters, and more critically  that the returned quote actually gets appended to the UI state's quote list so the screen would show it. This would catch a real and common mistake: calling the repository correctly but forgetting to update the state afterward, which would make a quote save successfully on the server while silently never appearing on screen.
+it doesn't test against a real network connection or real backend, so it can't catch things like a mismatched JSON field name, a wrong endpoint URL, or an actual server-side validation rule. It also doesn't test failure paths what happens if createQuote() throws an exception, or if the user isn't logged in  since this test only covers the success case. And it doesn't test any other quote actions (edit, delete, like), so a bug in those specific functions wouldn't be caught by this test at all.
 ---
 
 ## Part 5 — Looking Forward
 
 **5a. If you were going to continue developing this app after the semester ends, what would you build next and why?**
 
-> Your answer:
-
+> Your answer:If I kept developing this app, I'd focus on two things. First, I'd finish properly stress-testing and polishing the pagination on the Public Quotes feed right now the logic is built but I never actually saw it handle a real second page of data, so I'd want to seed enough quotes to confirm it works correctly before trusting it, and probably switch it from a manual "Load More" button to automatic infinite scroll for a smoother feel.
+I'd build a reading/watching progress tracker with reminders  right now the Library screen just shows a status (Want To, In Progress, Finished), but there's no sense of momentum. I'd add the ability to log progress on something "In Progress" (like "page 140 of 320" for a book, or "episode 4 of 8" for a show), show a simple progress bar on the Library and Media Detail screens, and let users optionally set a reminder notification if they haven't touched something in a while something like "You haven't updated Dune in 2 weeks, still reading?"
+> I'd want to build this next because it would turn a static list into something i actually come back to. Right now the app is good at storing what im reading or watching, but it doesn't do much to help you actually finish things or feel a sense of progress
 ---
 
 **5b. A friend tells you they want to learn Android development. Based specifically on your experience this semester — not what you've read, what you lived — what is the one thing you would tell them to understand before they write a single line of code?**
 
-> Your answer:
+
+> Your answer: I'd tell them understand that a crash almost never means what the error message on the surface says it means  trace it back to the actual root cause before you start "fixing" anything. will save you alot of time and headache 
 
 ---
 
